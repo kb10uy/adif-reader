@@ -19,7 +19,11 @@ impl<'a, 'i: 'a> Record<'a> {
                 };
 
                 let tag_name = c.tag_name().name();
-                let value = c.children().flat_map(|n| n.text()).collect();
+                let value = c
+                    .children()
+                    .filter(|n| n.is_text())
+                    .flat_map(|n| n.text())
+                    .collect();
                 match tag_name {
                     "USERDEF" => {
                         let name = c.attribute("FIELDNAME").ok_or(AdxError::RequiredField)?;
@@ -101,5 +105,19 @@ mod tests {
                 .collect()
             })
         )
+    }
+
+    #[test]
+    fn ignores_comments_in_values() {
+        let adx = Document::parse("<RECORD><CALL>JL1<!--comment-->HIS</CALL></RECORD>").unwrap();
+        let record = Record::new(adx.root_element());
+        assert_eq!(
+            record,
+            Ok(Record {
+                fields: vec![(FieldName::Defined("CALL"), "JL1HIS".to_string())]
+                    .into_iter()
+                    .collect()
+            })
+        );
     }
 }

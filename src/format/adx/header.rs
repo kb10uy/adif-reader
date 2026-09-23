@@ -19,7 +19,11 @@ impl<'a, 'i: 'a> Header<'a> {
                 };
 
                 let tag_name = c.tag_name().name();
-                let value = c.children().flat_map(|n| n.text()).collect();
+                let value = c
+                    .children()
+                    .filter(|n| n.is_text())
+                    .flat_map(|n| n.text())
+                    .collect();
                 if tag_name == "USERDEF" {
                     let id = c
                         .attribute("FIELDID")
