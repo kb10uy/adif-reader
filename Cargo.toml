@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 authors = ["Yū KOBAYASHI <kb10uy@kb10uy.org>"]
+description = "Reader for ADIF amateur radio logs in ADI and ADX formats"
+readme = "README.md"
+keywords = ["adif", "ham-radio", "amateur-radio", "logbook", "parser"]
+categories = ["parser-implementations"]
 
 [dependencies]
 regex = "1.13.1"
