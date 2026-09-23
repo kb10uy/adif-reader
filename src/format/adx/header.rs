@@ -27,7 +27,10 @@ impl<'a, 'i: 'a> Header<'a> {
                 if tag_name == "USERDEF" {
                     let id = c
                         .attribute("FIELDID")
-                        .ok_or(AdxError::RequiredField)?
+                        .ok_or(AdxError::MissingAttribute {
+                            element: "USERDEF",
+                            attribute: "FIELDID",
+                        })?
                         .parse()?;
                     Ok(Some((FieldName::UserdefHeader(id), value)))
                 } else {

@@ -26,15 +26,26 @@ impl<'a, 'i: 'a> Record<'a> {
                     .collect();
                 match tag_name {
                     "USERDEF" => {
-                        let name = c.attribute("FIELDNAME").ok_or(AdxError::RequiredField)?;
+                        let name = c.attribute("FIELDNAME").ok_or(AdxError::MissingAttribute {
+                            element: "USERDEF",
+                            attribute: "FIELDNAME",
+                        })?;
                         Ok(Some((
                             FieldName::UserdefRecord(name.to_ascii_uppercase()),
                             value,
                         )))
                     }
                     "APP" => {
-                        let program_id = c.attribute("PROGRAMID").ok_or(AdxError::RequiredField)?;
-                        let field_name = c.attribute("FIELDNAME").ok_or(AdxError::RequiredField)?;
+                        let program_id =
+                            c.attribute("PROGRAMID").ok_or(AdxError::MissingAttribute {
+                                element: "APP",
+                                attribute: "PROGRAMID",
+                            })?;
+                        let field_name =
+                            c.attribute("FIELDNAME").ok_or(AdxError::MissingAttribute {
+                                element: "APP",
+                                attribute: "FIELDNAME",
+                            })?;
                         Ok(Some((
                             FieldName::AppRecord {
                                 program_id,
@@ -57,7 +68,7 @@ impl<'a, 'i: 'a> Record<'a> {
 mod tests {
     use roxmltree::{Document, Node};
 
-    use crate::format::adx::field_name::FieldName;
+    use crate::format::adx::{error::AdxError, field_name::FieldName};
 
     use super::Record;
 
@@ -120,6 +131,18 @@ mod tests {
                 fields: vec![(FieldName::Defined("CALL"), "JL1HIS".to_string())]
                     .into_iter()
                     .collect()
+            })
+        );
+    }
+
+    #[test]
+    fn reports_missing_attribute() {
+        let adx = Document::parse(r#"<RECORD><APP FIELDNAME="X">1</APP></RECORD>"#).unwrap();
+        assert_eq!(
+            Record::new(adx.root_element()),
+            Err(AdxError::MissingAttribute {
+                element: "APP",
+                attribute: "PROGRAMID",
             })
         );
     }
