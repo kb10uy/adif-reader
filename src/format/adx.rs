@@ -3,10 +3,10 @@ mod field_name;
 mod header;
 mod record;
 
-use roxmltree::{Document, NodeType};
+use roxmltree::{Document, Node, NodeType};
 
 use crate::{
-    document::{AdifDocument, IntoAdifDocument},
+    document::{AdifDocument, DataType, Field, IntoAdifDocument},
     format::adx::{error::AdxError, header::Header, record::Record},
 };
 
@@ -68,12 +68,21 @@ impl<'a> IntoAdifDocument for AdxDocument<'a> {
             .header
             .fields
             .into_iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()));
+            .map(|(k, (v, t))| (k.to_string(), Field::new(v, t)));
         let records = self.records.into_iter().map(|r| {
             r.fields
                 .into_iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .map(|(k, (v, t))| (k.to_string(), Field::new(v, t)))
         });
         AdifDocument::new("", headers, records)
     }
+}
+
+fn parse_data_type(element: Node) -> Result<Option<DataType>, AdxError> {
+    element
+        .attribute("TYPE")
+        .map(|t| {
+            DataType::from_indicator(t).ok_or_else(|| AdxError::UnknownDataType(t.to_string()))
+        })
+        .transpose()
 }

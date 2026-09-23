@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use regex::{Regex, RegexBuilder};
 
-use crate::format::adi::error::TagError;
+use crate::{document::DataType, format::adi::error::TagError};
 
 static RE_FIELD_TAG: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new(r#"<((EOH)|(EOR)|([^,:<>\{\}]+):([0-9]+)(:([A-Z]+))?)>"#)
@@ -18,7 +18,7 @@ pub enum Tag<'a> {
     Specifier {
         name: &'a str,
         value_length: usize,
-        type_indicator: Option<&'a str>,
+        data_type: Option<DataType>,
     },
 }
 
@@ -37,13 +37,19 @@ impl<'a> Tag<'a> {
 
         let field_name = tag_match.get(4).expect("capture must exist");
         let value_length = tag_match.get(5).expect("capture must exist");
-        let type_indicator = tag_match.get(7);
+        let data_type = tag_match
+            .get(7)
+            .map(|m| {
+                DataType::from_indicator(m.as_str())
+                    .ok_or_else(|| TagError::UnknownDataType(m.as_str().to_string()))
+            })
+            .transpose()?;
 
         Ok((
             Tag::Specifier {
                 name: field_name.as_str(),
                 value_length: value_length.as_str().parse()?,
-                type_indicator: type_indicator.map(|m| m.as_str()),
+                data_type,
             },
             tag_end,
         ))
@@ -60,7 +66,7 @@ impl<'a> Tag<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::format::adi::error::TagError;
+    use crate::{document::DataType, format::adi::error::TagError};
 
     use super::Tag;
 
@@ -80,7 +86,7 @@ mod tests {
                 Tag::Specifier {
                     name: "CALL",
                     value_length: 6,
-                    type_indicator: None
+                    data_type: None
                 },
                 8,
             ))
@@ -91,10 +97,18 @@ mod tests {
                 Tag::Specifier {
                     name: "CALL",
                     value_length: 6,
-                    type_indicator: Some("S"),
+                    data_type: Some(DataType::String),
                 },
                 10,
             ))
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_data_type() {
+        assert_eq!(
+            Tag::parse("<CALL:6:X>"),
+            Err(TagError::UnknownDataType("X".to_string()))
         );
     }
 

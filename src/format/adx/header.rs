@@ -2,11 +2,14 @@ use std::collections::HashMap;
 
 use roxmltree::{Node, NodeType};
 
-use crate::format::adx::{error::AdxError, field_name::FieldName};
+use crate::{
+    document::DataType,
+    format::adx::{error::AdxError, field_name::FieldName, parse_data_type},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header<'a> {
-    pub fields: HashMap<FieldName<'a>, String>,
+    pub fields: HashMap<FieldName<'a>, (String, Option<DataType>)>,
 }
 
 impl<'a, 'i: 'a> Header<'a> {
@@ -19,11 +22,12 @@ impl<'a, 'i: 'a> Header<'a> {
                 };
 
                 let tag_name = c.tag_name().name();
-                let value = c
+                let text: String = c
                     .children()
                     .filter(|n| n.is_text())
                     .flat_map(|n| n.text())
                     .collect();
+                let value = (text, parse_data_type(c)?);
                 if tag_name == "USERDEF" {
                     let id = c
                         .attribute("FIELDID")
@@ -48,7 +52,7 @@ impl<'a, 'i: 'a> Header<'a> {
 mod tests {
     use roxmltree::{Document, Node};
 
-    use crate::format::adx::field_name::FieldName;
+    use crate::{document::DataType, format::adx::field_name::FieldName};
 
     use super::Header;
 
@@ -73,11 +77,23 @@ mod tests {
             header,
             Ok(Header {
                 fields: vec![
-                    (FieldName::Defined("ADIF_VER"), "3.0.5".to_string()),
-                    (FieldName::Defined("PROGRAMID"), "monolog".to_string()),
-                    (FieldName::UserdefHeader(1), "EPC".to_string()),
-                    (FieldName::UserdefHeader(2), "SWEATERSIZE".to_string()),
-                    (FieldName::UserdefHeader(3), "SHOESIZE".to_string()),
+                    (FieldName::Defined("ADIF_VER"), ("3.0.5".to_string(), None)),
+                    (
+                        FieldName::Defined("PROGRAMID"),
+                        ("monolog".to_string(), None)
+                    ),
+                    (
+                        FieldName::UserdefHeader(1),
+                        ("EPC".to_string(), Some(DataType::Number))
+                    ),
+                    (
+                        FieldName::UserdefHeader(2),
+                        ("SWEATERSIZE".to_string(), Some(DataType::Enumeration))
+                    ),
+                    (
+                        FieldName::UserdefHeader(3),
+                        ("SHOESIZE".to_string(), Some(DataType::Number))
+                    ),
                 ]
                 .into_iter()
                 .collect()

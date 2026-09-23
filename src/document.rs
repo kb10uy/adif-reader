@@ -1,15 +1,19 @@
+mod data_type;
+mod field;
 mod field_name;
 mod record;
 
 use std::collections::HashMap;
 
+pub use data_type::DataType;
+pub use field::Field;
 pub use field_name::FieldName;
 pub use record::Record;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdifDocument {
     preamble: String,
-    headers: HashMap<String, String>,
+    headers: HashMap<String, Field>,
     records: Vec<Record>,
 }
 
@@ -17,8 +21,8 @@ impl AdifDocument {
     pub fn new<P, H, R, RS>(preamble: P, headers: H, records: RS) -> AdifDocument
     where
         P: Into<String>,
-        H: IntoIterator<Item = (String, String)>,
-        R: IntoIterator<Item = (String, String)>,
+        H: IntoIterator<Item = (String, Field)>,
+        R: IntoIterator<Item = (String, Field)>,
         RS: IntoIterator<Item = R>,
     {
         let preamble = preamble.into();
@@ -44,10 +48,17 @@ impl AdifDocument {
 
     pub fn header<'a, F: Into<FieldName<'a>>>(&self, name: F) -> Option<&str> {
         let field_name = name.into();
-        self.headers.get(field_name.as_str()).map(|s| s.as_str())
+        self.headers.get(field_name.as_str()).map(Field::value)
     }
 
-    pub fn headers(&self) -> &HashMap<String, String> {
+    pub fn header_type<'a, F: Into<FieldName<'a>>>(&self, name: F) -> Option<DataType> {
+        let field_name = name.into();
+        self.headers
+            .get(field_name.as_str())
+            .and_then(Field::data_type)
+    }
+
+    pub fn headers(&self) -> &HashMap<String, Field> {
         &self.headers
     }
 

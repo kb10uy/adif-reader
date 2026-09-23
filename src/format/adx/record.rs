@@ -2,11 +2,14 @@ use std::collections::HashMap;
 
 use roxmltree::{Node, NodeType};
 
-use crate::format::adx::{error::AdxError, field_name::FieldName};
+use crate::{
+    document::DataType,
+    format::adx::{error::AdxError, field_name::FieldName, parse_data_type},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Record<'a> {
-    pub fields: HashMap<FieldName<'a>, String>,
+    pub fields: HashMap<FieldName<'a>, (String, Option<DataType>)>,
 }
 
 impl<'a, 'i: 'a> Record<'a> {
@@ -19,11 +22,12 @@ impl<'a, 'i: 'a> Record<'a> {
                 };
 
                 let tag_name = c.tag_name().name();
-                let value = c
+                let text: String = c
                     .children()
                     .filter(|n| n.is_text())
                     .flat_map(|n| n.text())
                     .collect();
+                let value = (text, parse_data_type(c)?);
                 match tag_name {
                     "USERDEF" => {
                         let name = c.attribute("FIELDNAME").ok_or(AdxError::MissingAttribute {
@@ -68,7 +72,10 @@ impl<'a, 'i: 'a> Record<'a> {
 mod tests {
     use roxmltree::{Document, Node};
 
-    use crate::format::adx::{error::AdxError, field_name::FieldName};
+    use crate::{
+        document::DataType,
+        format::adx::{error::AdxError, field_name::FieldName},
+    };
 
     use super::Record;
 
@@ -94,25 +101,28 @@ mod tests {
             record,
             Ok(Record {
                 fields: vec![
-                    (FieldName::Defined("QSO_DATE"), "19900620".to_string()),
-                    (FieldName::Defined("TIME_ON"), "1523".to_string()),
-                    (FieldName::Defined("CALL"), "VK9NS".to_string()),
-                    (FieldName::Defined("BAND"), "20M".to_string()),
-                    (FieldName::Defined("MODE"), "RTTY".to_string()),
+                    (
+                        FieldName::Defined("QSO_DATE"),
+                        ("19900620".to_string(), None)
+                    ),
+                    (FieldName::Defined("TIME_ON"), ("1523".to_string(), None)),
+                    (FieldName::Defined("CALL"), ("VK9NS".to_string(), None)),
+                    (FieldName::Defined("BAND"), ("20M".to_string(), None)),
+                    (FieldName::Defined("MODE"), ("RTTY".to_string(), None)),
                     (
                         FieldName::UserdefRecord("SWEATERSIZE".to_string()),
-                        "M".to_string(),
+                        ("M".to_string(), None),
                     ),
                     (
                         FieldName::UserdefRecord("SHOESIZE".to_string()),
-                        "11".to_string(),
+                        ("11".to_string(), None),
                     ),
                     (
                         FieldName::AppRecord {
                             program_id: "MONOLOG",
                             field_name: "COMPRESSION".to_string(),
                         },
-                        "off".to_string(),
+                        ("off".to_string(), Some(DataType::String)),
                     ),
                 ]
                 .into_iter()
@@ -128,10 +138,19 @@ mod tests {
         assert_eq!(
             record,
             Ok(Record {
-                fields: vec![(FieldName::Defined("CALL"), "JL1HIS".to_string())]
+                fields: vec![(FieldName::Defined("CALL"), ("JL1HIS".to_string(), None))]
                     .into_iter()
                     .collect()
             })
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_data_type() {
+        let adx = Document::parse(r#"<RECORD><CALL TYPE="X">JL1HIS</CALL></RECORD>"#).unwrap();
+        assert_eq!(
+            Record::new(adx.root_element()),
+            Err(AdxError::UnknownDataType("X".to_string()))
         );
     }
 

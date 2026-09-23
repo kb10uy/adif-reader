@@ -21,4 +21,7 @@ pub enum AdxError {
 
     #[error("invalid length: {0}")]
     ParseInt(#[from] ParseIntError),
+
+    #[error("unknown data type indicator: {0}")]
+    UnknownDataType(String),
 }

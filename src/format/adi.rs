@@ -5,7 +5,7 @@ mod record;
 mod tag;
 
 use crate::{
-    document::{AdifDocument, IntoAdifDocument},
+    document::{AdifDocument, Field, IntoAdifDocument},
     format::adi::{error::AdiError, header::Header, record::Record, tag::Tag},
 };
 
@@ -49,7 +49,7 @@ impl<'a> IntoAdifDocument for AdiDocument<'a> {
                 Some(
                     h.fields
                         .into_iter()
-                        .map(|(k, v)| (k.as_str().to_string(), v.to_string())),
+                        .map(|(k, (v, t))| (k.as_str().to_string(), Field::new(v, t))),
                 ),
             ),
             None => ("", None),
@@ -57,7 +57,7 @@ impl<'a> IntoAdifDocument for AdiDocument<'a> {
         let records = self.records.into_iter().map(|r| {
             r.fields
                 .into_iter()
-                .map(|(k, v)| (k.as_str().to_string(), v.to_string()))
+                .map(|(k, (v, t))| (k.as_str().to_string(), Field::new(v, t)))
         });
         AdifDocument::new(preamble.to_string(), headers.into_iter().flatten(), records)
     }
@@ -85,7 +85,10 @@ mod tests {
             AdiDocument::parse("\u{feff}<CALL:3>ABC<EOR>", LengthMode::Bytes).expect("must parse");
         assert!(adi.header.is_none());
         assert_eq!(adi.records.len(), 1);
-        assert_eq!(adi.records[0].fields.get(&"CALL".into()), Some(&"ABC"));
+        assert_eq!(
+            adi.records[0].fields.get(&"CALL".into()),
+            Some(&("ABC", None))
+        );
     }
 
     #[test]

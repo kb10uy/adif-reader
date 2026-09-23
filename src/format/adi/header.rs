@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    document::FieldName,
+    document::{DataType, FieldName},
     format::adi::{
         data::{LengthMode, read_field_value},
         error::AdiError,
@@ -12,7 +12,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header<'a> {
     pub preamble: &'a str,
-    pub fields: HashMap<FieldName<'a>, &'a str>,
+    pub fields: HashMap<FieldName<'a>, (&'a str, Option<DataType>)>,
 }
 
 impl<'a> Header<'a> {
@@ -36,13 +36,15 @@ impl<'a> Header<'a> {
             match Tag::parse(&text[consumed..]) {
                 Ok((
                     Tag::Specifier {
-                        name, value_length, ..
+                        name,
+                        value_length,
+                        data_type,
                     },
                     c,
                 )) => {
                     consumed += c;
                     let value = read_field_value(text, consumed, length_mode, value_length)?;
-                    fields.insert(FieldName::new(name), value);
+                    fields.insert(FieldName::new(name), (value, data_type));
                     consumed += value.len();
                 }
                 Ok((Tag::EndOfHeader, c)) => {
@@ -72,10 +74,10 @@ mod tests {
         let expected = Header {
             preamble: "Fixture ADI File\n",
             fields: vec![
-                ("ADIF_VER".into(), "3.1.6"),
-                ("CREATED_TIMESTAMP".into(), "20260120 000000"),
-                ("PROGRAMID".into(), "jelgen"),
-                ("PROGRAMVERSION".into(), "0.1.0"),
+                ("ADIF_VER".into(), ("3.1.6", None)),
+                ("CREATED_TIMESTAMP".into(), ("20260120 000000", None)),
+                ("PROGRAMID".into(), ("jelgen", None)),
+                ("PROGRAMVERSION".into(), ("0.1.0", None)),
             ]
             .into_iter()
             .collect(),
@@ -92,7 +94,7 @@ mod tests {
             .expect("must parse");
         let header = header.expect("must have header");
         assert_eq!(header.fields.len(), 1);
-        assert_eq!(header.fields.get(&"ADIF_VER".into()), Some(&"2"));
+        assert_eq!(header.fields.get(&"ADIF_VER".into()), Some(&("2", None)));
     }
 
     #[test]
