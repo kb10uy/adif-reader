@@ -47,10 +47,10 @@ impl<'a> Header<'a> {
                         FieldValue::InvalidBoundary => {
                             return Err(AdiError::CharacterBoundary(consumed));
                         }
-                        FieldValue::NotEnough => {
+                        FieldValue::NotEnough(available) => {
                             return Err(AdiError::ValueTooShort {
                                 expected: value_length,
-                                maximum: text.len() - consumed,
+                                available,
                             });
                         }
                     };

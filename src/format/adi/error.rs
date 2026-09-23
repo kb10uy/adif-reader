@@ -19,8 +19,8 @@ pub enum AdiError {
     #[error("invalid character boundary found: {0}")]
     CharacterBoundary(usize),
 
-    #[error("field value too short; expected {expected}, max {maximum}")]
-    ValueTooShort { expected: usize, maximum: usize },
+    #[error("field value too short; expected {expected}, available {available}")]
+    ValueTooShort { expected: usize, available: usize },
 }
 
 impl AdiError {

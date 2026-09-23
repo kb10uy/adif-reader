@@ -11,7 +11,7 @@ pub enum LengthMode {
 pub enum FieldValue<'a> {
     Found(&'a str),
     InvalidBoundary,
-    NotEnough,
+    NotEnough(usize),
 }
 
 /// Splits `text` at specified `length` according to `mode`.
@@ -23,7 +23,7 @@ pub fn get_field_value(text: &str, mode: LengthMode, length: usize) -> FieldValu
     match mode {
         LengthMode::Bytes => {
             if text.len() < length {
-                FieldValue::NotEnough
+                FieldValue::NotEnough(text.len())
             } else if text.is_char_boundary(length) {
                 FieldValue::Found(&text[..length])
             } else {
@@ -35,7 +35,7 @@ pub fn get_field_value(text: &str, mode: LengthMode, length: usize) -> FieldValu
             let mut text_end_chars = text.char_indices().skip(length - 1);
 
             if text_end_chars.next().is_none() {
-                return FieldValue::NotEnough;
+                return FieldValue::NotEnough(text.chars().count());
             }
             match text_end_chars.next() {
                 Some((e, _)) => FieldValue::Found(&text[..e]),
@@ -47,7 +47,7 @@ pub fn get_field_value(text: &str, mode: LengthMode, length: usize) -> FieldValu
             let mut text_end_graphemes = text.grapheme_indices(true).skip(length - 1);
 
             if text_end_graphemes.next().is_none() {
-                return FieldValue::NotEnough;
+                return FieldValue::NotEnough(text.graphemes(true).count());
             }
             match text_end_graphemes.next() {
                 Some((e, _)) => FieldValue::Found(&text[..e]),
@@ -130,6 +130,22 @@ mod tests {
         assert_eq!(
             get_field_value("ABCÄËÖあいう👨‍👩‍👧‍👦👨‍👩‍👧‍👦", LengthMode::Graphemes, 11),
             FieldValue::Found("ABCÄËÖあいう👨‍👩‍👧‍👦👨‍👩‍👧‍👦")
+        );
+    }
+
+    #[test]
+    fn counts_available_length_by_mode() {
+        assert_eq!(
+            get_field_value("Äあ👨‍👩‍👧‍👦", LengthMode::Bytes, 99),
+            FieldValue::NotEnough(30)
+        );
+        assert_eq!(
+            get_field_value("Äあ👨‍👩‍👧‍👦", LengthMode::Codepoints, 99),
+            FieldValue::NotEnough(9)
+        );
+        assert_eq!(
+            get_field_value("Äあ👨‍👩‍👧‍👦", LengthMode::Graphemes, 99),
+            FieldValue::NotEnough(3)
         );
     }
 }
