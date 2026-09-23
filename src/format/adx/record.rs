@@ -27,7 +27,10 @@ impl<'a, 'i: 'a> Record<'a> {
                 match tag_name {
                     "USERDEF" => {
                         let name = c.attribute("FIELDNAME").ok_or(AdxError::RequiredField)?;
-                        Ok(Some((FieldName::UserdefRecord(name.to_uppercase()), value)))
+                        Ok(Some((
+                            FieldName::UserdefRecord(name.to_ascii_uppercase()),
+                            value,
+                        )))
                     }
                     "APP" => {
                         let program_id = c.attribute("PROGRAMID").ok_or(AdxError::RequiredField)?;
@@ -35,7 +38,7 @@ impl<'a, 'i: 'a> Record<'a> {
                         Ok(Some((
                             FieldName::AppRecord {
                                 program_id,
-                                field_name: field_name.to_uppercase(),
+                                field_name: field_name.to_ascii_uppercase(),
                             },
                             value,
                         )))

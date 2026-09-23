@@ -20,7 +20,7 @@ impl<'a> Display for FieldName<'a> {
             FieldName::AppRecord {
                 program_id,
                 field_name,
-            } => write!(f, "APP_{}_{field_name}", program_id.to_uppercase()),
+            } => write!(f, "APP_{}_{field_name}", program_id.to_ascii_uppercase()),
         }
     }
 }
