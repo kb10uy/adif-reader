@@ -1,7 +1,10 @@
 use roxmltree::Error as XmlError;
 use thiserror::Error as ThisError;
 
-pub use crate::format::{adi::error::AdiError, adx::error::AdxError};
+pub use crate::format::{
+    adi::error::{AdiError, TagError},
+    adx::error::AdxError,
+};
 
 #[derive(Debug, ThisError)]
 pub enum AdifError {
