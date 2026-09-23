@@ -4,7 +4,7 @@ use roxmltree::{Node, NodeType};
 
 use crate::{
     document::DataType,
-    format::adx::{error::AdxError, field_name::FieldName, parse_data_type},
+    format::adx::{element_text, error::AdxError, field_name::FieldName, parse_data_type},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,12 +22,7 @@ impl<'a, 'i: 'a> Record<'a> {
                 };
 
                 let tag_name = c.tag_name().name();
-                let text: String = c
-                    .children()
-                    .filter(|n| n.is_text())
-                    .flat_map(|n| n.text())
-                    .collect();
-                let value = (text, parse_data_type(c)?);
+                let value = (element_text(c), parse_data_type(c)?);
                 match tag_name {
                     "USERDEF" => {
                         let name = c.attribute("FIELDNAME").ok_or(AdxError::MissingAttribute {

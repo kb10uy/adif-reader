@@ -19,6 +19,15 @@ pub enum AdxError {
         attribute: &'static str,
     },
 
+    #[error("<{element}> has invalid {attribute} attribute")]
+    InvalidAttribute {
+        element: &'static str,
+        attribute: &'static str,
+    },
+
+    #[error("<USERDEF> must not have both ENUM and RANGE attributes")]
+    EnumAndRange,
+
     #[error("invalid length: {0}")]
     ParseInt(#[from] ParseIntError),
 

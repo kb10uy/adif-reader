@@ -43,7 +43,7 @@ impl<'a> AdiDocument<'a> {
 
 impl<'a> IntoAdifDocument for AdiDocument<'a> {
     fn into_adif_document(self) -> AdifDocument {
-        let (preamble, headers) = match self.header {
+        let (preamble, headers, user_defined_fields) = match self.header {
             Some(h) => (
                 h.preamble,
                 Some(
@@ -51,15 +51,21 @@ impl<'a> IntoAdifDocument for AdiDocument<'a> {
                         .into_iter()
                         .map(|(k, (v, t))| (k.as_str().to_string(), Field::new(v, t))),
                 ),
+                h.user_defined_fields,
             ),
-            None => ("", None),
+            None => ("", None, vec![]),
         };
         let records = self.records.into_iter().map(|r| {
             r.fields
                 .into_iter()
                 .map(|(k, (v, t))| (k.as_str().to_string(), Field::new(v, t)))
         });
-        AdifDocument::new(preamble.to_string(), headers.into_iter().flatten(), records)
+        AdifDocument::new(
+            preamble.to_string(),
+            headers.into_iter().flatten(),
+            user_defined_fields,
+            records,
+        )
     }
 }
 

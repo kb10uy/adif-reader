@@ -21,6 +21,9 @@ pub enum AdiError {
 
     #[error("field value too short; expected {expected}, available {available}")]
     ValueTooShort { expected: usize, available: usize },
+
+    #[error("invalid user-defined field definition: {0}")]
+    InvalidUserDefinedField(String),
 }
 
 impl AdiError {

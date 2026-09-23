@@ -53,4 +53,16 @@ mod tests {
         );
         assert_eq!(adx.records()[0].field_type("CALL"), None);
     }
+
+    #[test]
+    fn exposes_user_defined_fields_in_id_order() {
+        let adi = read_adi("h<USERDEF2:4>SIZE<USERDEF1:3:N>EPC<EOH>", LengthMode::Bytes)
+            .expect("must parse");
+        let names: Vec<_> = adi.user_defined_fields().iter().map(|u| u.name()).collect();
+        assert_eq!(names, ["EPC", "SIZE"]);
+
+        let adx = read_adx(include_str!("../fixtures/example.adx")).expect("must parse");
+        let names: Vec<_> = adx.user_defined_fields().iter().map(|u| u.name()).collect();
+        assert_eq!(names, ["EPC", "SWEATERSIZE", "SHOESIZE"]);
+    }
 }

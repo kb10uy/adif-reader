@@ -74,8 +74,16 @@ impl<'a> IntoAdifDocument for AdxDocument<'a> {
                 .into_iter()
                 .map(|(k, (v, t))| (k.to_string(), Field::new(v, t)))
         });
-        AdifDocument::new("", headers, records)
+        AdifDocument::new("", headers, self.header.user_defined_fields, records)
     }
+}
+
+fn element_text(element: Node) -> String {
+    element
+        .children()
+        .filter(|n| n.is_text())
+        .flat_map(|n| n.text())
+        .collect()
 }
 
 fn parse_data_type(element: Node) -> Result<Option<DataType>, AdxError> {

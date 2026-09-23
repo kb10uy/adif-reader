@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    document::{DataType, FieldName},
+    document::{DataType, FieldName, UserDefinedField, ValueConstraint},
     format::adi::{
         data::{LengthMode, read_field_value},
         error::AdiError,
@@ -13,6 +13,7 @@ use crate::{
 pub struct Header<'a> {
     pub preamble: &'a str,
     pub fields: HashMap<FieldName<'a>, (&'a str, Option<DataType>)>,
+    pub user_defined_fields: Vec<UserDefinedField>,
 }
 
 impl<'a> Header<'a> {
@@ -57,13 +58,60 @@ impl<'a> Header<'a> {
             }
         }
 
-        Ok((Some(Header { preamble, fields }), consumed))
+        let mut user_defined_fields = fields
+            .iter()
+            .filter_map(|(name, &(value, data_type))| {
+                parse_user_defined_field(name, value, data_type).transpose()
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        user_defined_fields.sort_by_key(UserDefinedField::id);
+
+        Ok((
+            Some(Header {
+                preamble,
+                fields,
+                user_defined_fields,
+            }),
+            consumed,
+        ))
     }
+}
+
+fn parse_user_defined_field(
+    name: &FieldName,
+    value: &str,
+    data_type: Option<DataType>,
+) -> Result<Option<UserDefinedField>, AdiError> {
+    let Some(id) = name
+        .as_str()
+        .strip_prefix("USERDEF")
+        .and_then(|n| n.parse().ok())
+    else {
+        return Ok(None);
+    };
+
+    let (field_name, constraint) = match value.split_once(',') {
+        Some((field_name, braced)) => {
+            let constraint = ValueConstraint::parse(braced)
+                .ok_or_else(|| AdiError::InvalidUserDefinedField(name.as_str().to_string()))?;
+            (field_name, Some(constraint))
+        }
+        None => (value, None),
+    };
+    Ok(Some(UserDefinedField::new(
+        id,
+        field_name.to_ascii_uppercase(),
+        data_type,
+        constraint,
+    )))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::format::adi::data::LengthMode;
+    use crate::{
+        document::{DataType, UserDefinedField, ValueConstraint},
+        format::adi::{data::LengthMode, error::AdiError},
+    };
 
     use super::Header;
 
@@ -81,6 +129,7 @@ mod tests {
             ]
             .into_iter()
             .collect(),
+            user_defined_fields: vec![],
         };
         assert_eq!(
             Header::parse(adi_text, LengthMode::Bytes),
@@ -95,6 +144,46 @@ mod tests {
         let header = header.expect("must have header");
         assert_eq!(header.fields.len(), 1);
         assert_eq!(header.fields.get(&"ADIF_VER".into()), Some(&("2", None)));
+    }
+
+    #[test]
+    fn parses_user_defined_fields() {
+        let text =
+            "x<USERDEF3:15>ShoeSize,{5:20}<USERDEF1:3:N>EPC<userdef2:19:E>SweaterSize,{S,M,L}<EOH>";
+        let (header, _) = Header::parse(text, LengthMode::Bytes).expect("must parse");
+        assert_eq!(
+            header.expect("must have header").user_defined_fields,
+            vec![
+                UserDefinedField::new(1, "EPC", Some(DataType::Number), None),
+                UserDefinedField::new(
+                    2,
+                    "SWEATERSIZE",
+                    Some(DataType::Enumeration),
+                    Some(ValueConstraint::Enumeration(vec![
+                        "S".to_string(),
+                        "M".to_string(),
+                        "L".to_string(),
+                    ])),
+                ),
+                UserDefinedField::new(
+                    3,
+                    "SHOESIZE",
+                    None,
+                    Some(ValueConstraint::Range {
+                        lower: "5".to_string(),
+                        upper: "20".to_string(),
+                    }),
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn rejects_malformed_user_defined_field() {
+        assert_eq!(
+            Header::parse("x<USERDEF1:9>Size,S|M|L<EOH>", LengthMode::Bytes),
+            Err(AdiError::InvalidUserDefinedField("USERDEF1".to_string()))
+        );
     }
 
     #[test]
