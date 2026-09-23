@@ -19,9 +19,14 @@ pub struct AdiDocument<'a> {
 
 impl<'a> AdiDocument<'a> {
     pub fn parse(text: &'a str, length_mode: LengthMode) -> Result<AdiDocument<'a>, AdiError> {
-        let mut consumed = 0;
+        let mut consumed = if text.starts_with('\u{feff}') {
+            '\u{feff}'.len_utf8()
+        } else {
+            0
+        };
 
-        let (header, header_consumed) = Header::parse(&text[consumed..], length_mode)?;
+        let (header, header_consumed) =
+            Header::parse(&text[consumed..], length_mode).map_err(|e| e.offset_by(consumed))?;
         consumed += header_consumed;
 
         let mut records = vec![];
@@ -71,6 +76,23 @@ mod tests {
         assert_eq!(
             AdiDocument::parse(text, LengthMode::Bytes).map(|_| ()),
             Err(AdiError::Tag(36, TagError::NotValidTag))
+        );
+    }
+
+    #[test]
+    fn skips_byte_order_mark() {
+        let adi =
+            AdiDocument::parse("\u{feff}<CALL:3>ABC<EOR>", LengthMode::Bytes).expect("must parse");
+        assert!(adi.header.is_none());
+        assert_eq!(adi.records.len(), 1);
+        assert_eq!(adi.records[0].fields.get(&"CALL".into()), Some(&"ABC"));
+    }
+
+    #[test]
+    fn includes_byte_order_mark_in_error_position() {
+        assert_eq!(
+            AdiDocument::parse("\u{feff}<CALL:3>ABC<EOH>", LengthMode::Bytes).map(|_| ()),
+            Err(AdiError::NoEor(14))
         );
     }
 }
