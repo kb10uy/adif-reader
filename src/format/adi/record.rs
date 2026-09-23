@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     document::FieldName,
     format::adi::{
-        data::{FieldValue, LengthMode, get_field_value},
+        data::{LengthMode, read_field_value},
         error::AdiError,
         tag::Tag,
     },
@@ -27,19 +27,7 @@ impl<'a> Record<'a> {
                     c,
                 )) => {
                     consumed += c;
-                    let value = match get_field_value(&text[consumed..], length_mode, value_length)
-                    {
-                        FieldValue::Found(v) => v,
-                        FieldValue::InvalidBoundary => {
-                            return Err(AdiError::CharacterBoundary(consumed));
-                        }
-                        FieldValue::NotEnough(available) => {
-                            return Err(AdiError::ValueTooShort {
-                                expected: value_length,
-                                available,
-                            });
-                        }
-                    };
+                    let value = read_field_value(text, consumed, length_mode, value_length)?;
                     fields.insert(FieldName::new(name), value);
                     consumed += value.len();
                 }

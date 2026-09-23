@@ -1,5 +1,7 @@
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::format::adi::error::AdiError;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LengthMode {
     Bytes,
@@ -54,6 +56,22 @@ pub fn get_field_value(text: &str, mode: LengthMode, length: usize) -> FieldValu
                 None => FieldValue::Found(text),
             }
         }
+    }
+}
+
+pub fn read_field_value(
+    text: &str,
+    position: usize,
+    mode: LengthMode,
+    length: usize,
+) -> Result<&str, AdiError> {
+    match get_field_value(&text[position..], mode, length) {
+        FieldValue::Found(v) => Ok(v),
+        FieldValue::InvalidBoundary => Err(AdiError::CharacterBoundary(position)),
+        FieldValue::NotEnough(available) => Err(AdiError::ValueTooShort {
+            expected: length,
+            available,
+        }),
     }
 }
 
