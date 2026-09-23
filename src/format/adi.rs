@@ -26,7 +26,8 @@ impl<'a> AdiDocument<'a> {
 
         let mut records = vec![];
         while Tag::has_next(&text[consumed..]) {
-            let (record, record_consumed) = Record::parse(&text[consumed..], length_mode)?;
+            let (record, record_consumed) =
+                Record::parse(&text[consumed..], length_mode).map_err(|e| e.offset_by(consumed))?;
             consumed += record_consumed;
             records.push(record);
         }
@@ -54,5 +55,22 @@ impl<'a> IntoAdifDocument for AdiDocument<'a> {
                 .map(|(k, v)| (k.as_str().to_string(), v.to_string()))
         });
         AdifDocument::new(preamble.to_string(), headers.into_iter().flatten(), records)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        AdiDocument, LengthMode,
+        error::{AdiError, TagError},
+    };
+
+    #[test]
+    fn reports_error_position_from_document_start() {
+        let text = "h\n<EOH>\n<CALL:3>ABC<EOR>\n<CALL:3>ABC";
+        assert_eq!(
+            AdiDocument::parse(text, LengthMode::Bytes).map(|_| ()),
+            Err(AdiError::Tag(36, TagError::NotValidTag))
+        );
     }
 }

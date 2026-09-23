@@ -23,6 +23,17 @@ pub enum AdiError {
     ValueTooShort { expected: usize, maximum: usize },
 }
 
+impl AdiError {
+    pub(super) fn offset_by(self, offset: usize) -> AdiError {
+        match self {
+            AdiError::NoEor(p) => AdiError::NoEor(p + offset),
+            AdiError::Tag(p, e) => AdiError::Tag(p + offset, e),
+            AdiError::CharacterBoundary(p) => AdiError::CharacterBoundary(p + offset),
+            e => e,
+        }
+    }
+}
+
 #[derive(Debug, ThisError, PartialEq, Eq)]
 pub enum TagError {
     #[error("no valid tag found")]
