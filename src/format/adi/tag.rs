@@ -5,7 +5,7 @@ use regex::{Regex, RegexBuilder};
 use crate::format::adi::error::TagError;
 
 static RE_FIELD_TAG: LazyLock<Regex> = LazyLock::new(|| {
-    RegexBuilder::new(r#"<((EOH)|(EOR)|([^,:<>\{\}]+):(\d+)(:([A-Z]+))?)>"#)
+    RegexBuilder::new(r#"<((EOH)|(EOR)|([^,:<>\{\}]+):([0-9]+)(:([A-Z]+))?)>"#)
         .case_insensitive(true)
         .build()
         .expect("regex error")
@@ -60,6 +60,8 @@ impl<'a> Tag<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::format::adi::error::TagError;
+
     use super::Tag;
 
     #[test]
@@ -94,5 +96,10 @@ mod tests {
                 10,
             ))
         );
+    }
+
+    #[test]
+    fn rejects_non_ascii_digits_in_length() {
+        assert_eq!(Tag::parse("<CALL:\u{0666}>"), Err(TagError::NotValidTag));
     }
 }
