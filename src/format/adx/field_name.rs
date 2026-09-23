@@ -17,7 +17,24 @@ impl<'a> Display for FieldName<'a> {
             FieldName::Defined(n) => write!(f, "{n}"),
             FieldName::UserdefHeader(i) => write!(f, "USERDEF{i}"),
             FieldName::UserdefRecord(n) => write!(f, "{n}"),
-            FieldName::AppRecord { field_name, .. } => write!(f, "{field_name}"),
+            FieldName::AppRecord {
+                program_id,
+                field_name,
+            } => write!(f, "APP_{}_{field_name}", program_id.to_uppercase()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::FieldName;
+
+    #[test]
+    fn formats_app_record_with_program_id() {
+        let name = FieldName::AppRecord {
+            program_id: "MonoLog",
+            field_name: "COMPRESSION".to_string(),
+        };
+        assert_eq!(name.to_string(), "APP_MONOLOG_COMPRESSION");
     }
 }
