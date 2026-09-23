@@ -22,10 +22,11 @@ impl<'a> Header<'a> {
     ) -> Result<(Option<Header<'a>>, usize), AdiError> {
         // > If the first character in an ADI file is <, it contains no Header.
         // https://adif.org.uk/316/ADIF_316.htm#ADI_File_Format
-        let header_start = match text.find("<") {
-            Some(0) => return Ok((None, 0)),
-            Some(n) => n,
-            None => return Err(AdiError::NoData),
+        if text.starts_with('<') {
+            return Ok((None, 0));
+        }
+        let Some(header_start) = Tag::find(text) else {
+            return Err(AdiError::NoData);
         };
         let preamble = &text[..header_start];
 
@@ -104,5 +105,15 @@ mod tests {
         let header = header.expect("must have header");
         assert_eq!(header.fields.len(), 1);
         assert_eq!(header.fields.get(&"ADIF_VER".into()), Some(&"2"));
+    }
+
+    #[test]
+    fn keeps_non_tag_brackets_in_preamble() {
+        let (header, _) =
+            Header::parse("Log by <JL1HIS>\n<EOH>", LengthMode::Bytes).expect("must parse");
+        assert_eq!(
+            header.expect("must have header").preamble,
+            "Log by <JL1HIS>\n"
+        );
     }
 }
