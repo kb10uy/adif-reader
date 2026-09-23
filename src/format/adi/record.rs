@@ -64,7 +64,7 @@ mod tests {
     use super::Record;
 
     #[test]
-    fn parses_header() {
+    fn parses_record() {
         let expected = Record {
             fields: vec![("CALL".into(), "JL1HIS")].into_iter().collect(),
         };

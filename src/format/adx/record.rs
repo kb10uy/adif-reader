@@ -81,7 +81,7 @@ mod tests {
             .root_element()
             .children()
             .find(|n| n.tag_name().name().to_uppercase() == "RECORDS")
-            .expect("example must have header")
+            .expect("example must have records")
     }
 
     #[test]
