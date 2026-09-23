@@ -1,15 +1,18 @@
 use std::collections::HashMap;
 
-use crate::format::adi::{
-    data::{FieldValue, LengthMode, get_field_value},
-    error::AdiError,
-    tag::Tag,
+use crate::{
+    document::FieldName,
+    format::adi::{
+        data::{FieldValue, LengthMode, get_field_value},
+        error::AdiError,
+        tag::Tag,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header<'a> {
     pub preamble: &'a str,
-    pub fields: HashMap<&'a str, &'a str>,
+    pub fields: HashMap<FieldName<'a>, &'a str>,
 }
 
 impl<'a> Header<'a> {
@@ -50,7 +53,7 @@ impl<'a> Header<'a> {
                             });
                         }
                     };
-                    fields.insert(name, value);
+                    fields.insert(FieldName::new(name), value);
                     consumed += value.len();
                 }
                 Ok((Tag::EndOfHeader, c)) => {
@@ -80,10 +83,10 @@ mod tests {
         let expected = Header {
             preamble: "Fixture ADI File\n",
             fields: vec![
-                ("ADIF_VER", "3.1.6"),
-                ("CREATED_TIMESTAMP", "20260120 000000"),
-                ("PROGRAMID", "jelgen"),
-                ("PROGRAMVERSION", "0.1.0"),
+                ("ADIF_VER".into(), "3.1.6"),
+                ("CREATED_TIMESTAMP".into(), "20260120 000000"),
+                ("PROGRAMID".into(), "jelgen"),
+                ("PROGRAMVERSION".into(), "0.1.0"),
             ]
             .into_iter()
             .collect(),
@@ -92,5 +95,14 @@ mod tests {
             Header::parse(adi_text, LengthMode::Bytes),
             Ok((Some(expected), 122))
         );
+    }
+
+    #[test]
+    fn keeps_last_of_case_insensitive_duplicates() {
+        let (header, _) = Header::parse("x<adif_ver:1>1<ADIF_VER:1>2<EOH>", LengthMode::Bytes)
+            .expect("must parse");
+        let header = header.expect("must have header");
+        assert_eq!(header.fields.len(), 1);
+        assert_eq!(header.fields.get(&"ADIF_VER".into()), Some(&"2"));
     }
 }

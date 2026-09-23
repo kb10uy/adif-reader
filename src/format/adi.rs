@@ -43,7 +43,7 @@ impl<'a> IntoAdifDocument for AdiDocument<'a> {
                 Some(
                     h.fields
                         .into_iter()
-                        .map(|(k, v)| (k.to_string(), v.to_string())),
+                        .map(|(k, v)| (k.as_str().to_string(), v.to_string())),
                 ),
             ),
             None => ("", None),
