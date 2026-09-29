@@ -58,10 +58,6 @@ impl<'a> Tag<'a> {
     pub fn find(text: &str) -> Option<usize> {
         RE_FIELD_TAG.find(text).map(|m| m.start())
     }
-
-    pub fn has_next(text: &str) -> bool {
-        RE_FIELD_TAG.is_match(text)
-    }
 }
 
 #[cfg(test)]

@@ -55,6 +55,22 @@ mod tests {
     }
 
     #[test]
+    fn exposes_record_spans() {
+        let text = "\u{feff}h<EOH>\n<CALL:3>ABC<EOR>\n junk <CALL:3>DEF<eor>\n";
+        let adi = read_adi(text, LengthMode::Bytes).expect("must parse");
+        let spans: Vec<_> = adi.records().iter().map(|r| r.span()).collect();
+        assert_eq!(spans, [Some(10..26), Some(33..49)]);
+        assert_eq!(&text[10..26], "<CALL:3>ABC<EOR>");
+        assert_eq!(&text[33..49], "<CALL:3>DEF<eor>");
+
+        let text =
+            "<ADX><HEADER></HEADER><RECORDS>\n<RECORD><CALL>ABC</CALL></RECORD>\n</RECORDS></ADX>";
+        let adx = read_adx(text).expect("must parse");
+        let span = adx.records()[0].span().expect("must have span");
+        assert_eq!(&text[span], "<RECORD><CALL>ABC</CALL></RECORD>");
+    }
+
+    #[test]
     fn exposes_user_defined_fields_in_id_order() {
         let adi = read_adi("h<USERDEF2:4>SIZE<USERDEF1:3:N>EPC<EOH>", LengthMode::Bytes)
             .expect("must parse");

@@ -69,12 +69,14 @@ impl<'a> IntoAdifDocument for AdxDocument<'a> {
             .fields
             .into_iter()
             .map(|(k, (v, t))| (k.to_string(), Field::new(v, t)));
+        let spans: Vec<_> = self.records.iter().map(|r| r.span.clone()).collect();
         let records = self.records.into_iter().map(|r| {
             r.fields
                 .into_iter()
                 .map(|(k, (v, t))| (k.to_string(), Field::new(v, t)))
         });
         AdifDocument::new("", headers, self.header.user_defined_fields, records)
+            .with_record_spans(spans)
     }
 }
 

@@ -4,7 +4,7 @@ mod field_name;
 mod record;
 mod user_defined_field;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Range};
 
 pub use data_type::DataType;
 pub use field::Field;
@@ -52,6 +52,16 @@ impl AdifDocument {
             user_defined_fields,
             records,
         }
+    }
+
+    pub(crate) fn with_record_spans<S: IntoIterator<Item = Range<usize>>>(
+        mut self,
+        spans: S,
+    ) -> AdifDocument {
+        for (record, span) in self.records.iter_mut().zip(spans) {
+            record.set_span(span);
+        }
+        self
     }
 
     pub fn preamble(&self) -> &str {

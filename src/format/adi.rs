@@ -4,6 +4,8 @@ mod header;
 mod record;
 mod tag;
 
+use std::ops::Range;
+
 use crate::{
     document::{AdifDocument, Field, IntoAdifDocument},
     format::adi::{error::AdiError, header::Header, record::Record, tag::Tag},
@@ -14,7 +16,7 @@ pub use data::LengthMode;
 #[derive(Debug, Clone)]
 pub struct AdiDocument<'a> {
     header: Option<Header<'a>>,
-    records: Vec<Record<'a>>,
+    records: Vec<(Record<'a>, Range<usize>)>,
 }
 
 impl<'a> AdiDocument<'a> {
@@ -30,11 +32,12 @@ impl<'a> AdiDocument<'a> {
         consumed += header_consumed;
 
         let mut records = vec![];
-        while Tag::has_next(&text[consumed..]) {
+        while let Some(tag_start) = Tag::find(&text[consumed..]) {
+            let start = consumed + tag_start;
             let (record, record_consumed) =
                 Record::parse(&text[consumed..], length_mode).map_err(|e| e.offset_by(consumed))?;
             consumed += record_consumed;
-            records.push(record);
+            records.push((record, start..consumed));
         }
 
         Ok(AdiDocument { header, records })
@@ -55,7 +58,8 @@ impl<'a> IntoAdifDocument for AdiDocument<'a> {
             ),
             None => ("", None, vec![]),
         };
-        let records = self.records.into_iter().map(|r| {
+        let (records, spans): (Vec<_>, Vec<_>) = self.records.into_iter().unzip();
+        let records = records.into_iter().map(|r| {
             r.fields
                 .into_iter()
                 .map(|(k, (v, t))| (k.as_str().to_string(), Field::new(v, t)))
@@ -66,6 +70,7 @@ impl<'a> IntoAdifDocument for AdiDocument<'a> {
             user_defined_fields,
             records,
         )
+        .with_record_spans(spans)
     }
 }
 
@@ -92,7 +97,7 @@ mod tests {
         assert!(adi.header.is_none());
         assert_eq!(adi.records.len(), 1);
         assert_eq!(
-            adi.records[0].fields.get(&"CALL".into()),
+            adi.records[0].0.fields.get(&"CALL".into()),
             Some(&("ABC", None))
         );
     }

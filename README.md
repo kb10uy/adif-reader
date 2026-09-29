@@ -18,6 +18,7 @@ care which format a log came from.
 - User-defined field definitions (`USERDEFn`) with their enumeration or range constraints
 - Selectable interpretation of ADI data lengths for files containing non-ASCII text
 - A leading UTF-8 byte order mark is skipped
+- Byte range of each record in the source text (`record.span()`), for passing records through unchanged
 
 ## Usage
 

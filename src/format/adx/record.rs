@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Range};
 
 use roxmltree::{Node, NodeType};
 
@@ -10,6 +10,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Record<'a> {
     pub fields: HashMap<FieldName<'a>, (String, Option<DataType>)>,
+    pub span: Range<usize>,
 }
 
 impl<'a, 'i: 'a> Record<'a> {
@@ -59,7 +60,10 @@ impl<'a, 'i: 'a> Record<'a> {
             .flat_map(|ro| ro.transpose())
             .collect();
 
-        Ok(Record { fields: fields? })
+        Ok(Record {
+            fields: fields?,
+            span: record_element.range(),
+        })
     }
 }
 
@@ -121,7 +125,8 @@ mod tests {
                     ),
                 ]
                 .into_iter()
-                .collect()
+                .collect(),
+                span: record_element.range(),
             })
         )
     }
@@ -135,7 +140,8 @@ mod tests {
             Ok(Record {
                 fields: vec![(FieldName::Defined("CALL"), ("JL1HIS".to_string(), None))]
                     .into_iter()
-                    .collect()
+                    .collect(),
+                span: 0..50,
             })
         );
     }
